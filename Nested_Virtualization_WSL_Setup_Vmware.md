@@ -15,7 +15,7 @@ Edit the `.vmx` file of your Windows VM and add the following lines:
 ```plaintext
 hypervisor.cpuid.v0 = "FALSE"
 vhv.enable = "TRUE"
-amd-v = "TRUE"
+amd-v = "TRUE"   #for amd processor
 ```
 Save the file and start the VM.
 
@@ -63,6 +63,9 @@ wsl --install -d kali-linux
 ## Notes
 - Ensure virtualization is enabled by checking **Task Manager** > **Performance** tab > "Virtualization" (should say **Enabled**).
 - Always restart the system after enabling features or making configuration changes.
-
+- This setting means you can't use Hyper-V, Docker Desktop or any other virtualization stuff on your host machine while allowing nested virtualization. If you want to enable it again, just run the following command and restart host.
+```bash
+bcdedit /set hypervisorlaunchtype auto
+```
 ---
 
