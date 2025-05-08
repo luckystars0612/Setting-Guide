@@ -34,7 +34,7 @@ Reboot the VM after executing these commands.
 ## 4. Install WSL Without a Distribution
 Install WSL (without a distribution) by running:
 ```powershell
-wsl --install --no-distribution
+wsl --update
 ```
 
 ## 5. Change to WSL version 2
