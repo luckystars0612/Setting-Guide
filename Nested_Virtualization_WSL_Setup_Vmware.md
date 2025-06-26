@@ -17,11 +17,13 @@ hypervisor.cpuid.v0 = "FALSE"
 vhv.enable = "TRUE"
 amd-v = "TRUE"   #for amd processor
 ```
+> ***Note: this can be done with GUI of Vmware by click processors -> Virtualize Intel VT-x/EPT or AMD-V/RVI***
 Save the file and start the VM.
 
+***Note: In newer versions of VMware Workstation, we need to disable Device Guard (or installation will fail) follow [Microsoft instruction](https://answers.microsoft.com/en-us/windows/forum/all/how-to-disable-device-guard/5f29388b-b59b-44cb-ae16-7f60aee2a449)***
 ---
 
-## 3. Enable Virtualization Features in the VM
+## 3. Enable Virtualization Features in the VM (optional)
 After starting the Windows VM, open **PowerShell** with Administrator rights and run the following commands to enable virtualization features:
 ```powershell
 dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
