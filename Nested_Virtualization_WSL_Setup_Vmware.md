@@ -65,9 +65,20 @@ wsl --install -d kali-linux
 ## Notes
 - Ensure virtualization is enabled by checking **Task Manager** > **Performance** tab > "Virtualization" (should say **Enabled**).
 - Always restart the system after enabling features or making configuration changes.
-- This setting means you can't use Hyper-V, Docker Desktop or any other virtualization stuff on your host machine while allowing nested virtualization. If you want to enable it again, just run the following command and restart host.
+- This setting means you can't use Hyper-V, Docker Desktop or any other virtualization stuff on your host machine while allowing nested virtualization.
+- For using both wsl on host machine and still use virtual machine on VMware, we must disable Virtualization engine on processors (this mean nested virtualization on vm does not work anymore)
 ```bash
 bcdedit /set hypervisorlaunchtype auto
 ```
+```bash
+Virtual machine settings -> Processors -> disable both `Virtualize Intel VT-x/EPT or AMD-V/RVI` and `Virtualize CPU performance counters`
+```
 ---
-
+- For using both virtual machine on VMware and nested virtual wsl on this VM, enable Virutalization engine on processors
+```bash
+bcdedit /set hypervisorlaunchtype off
+```
+```bash
+Virtual machine settings -> Processors -> enable both `Virtualize Intel VT-x/EPT or AMD-V/RVI` and `Virtualize CPU performance counters`
+```
+- We need to restart to apply changes.
