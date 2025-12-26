@@ -10,10 +10,8 @@
     - Network Name Resolution (NNR) Port Validation
     - SAM-R Configuration for Lateral Movement Path Detection
     - Object Auditing (Domain SACL)
-    - Advanced Auditing (Security audit policies incl. Directory Service Replication)
+    - Advanced Auditing (Security audit policies)
     - NTLM Auditing (Registry settings)
-    - SMB Encryption Configuration (Disabled for MDI network parsing)
-    - Replication Rights Auditing (DCSync detection via SACL)
     - Power Settings (High Performance mode)
     - Time Synchronization Check
     - Connectivity Validation
@@ -31,7 +29,7 @@
     Only validate current configuration without making changes
 .NOTES
     Run this script as Administrator on your Domain Controller
-    Version: 3.1
+    Version: 3.0
     Based on:
     - https://learn.microsoft.com/en-us/defender-for-identity/nnr-policy
     - https://learn.microsoft.com/en-us/defender-for-identity/deploy/remote-calls-sam
@@ -129,7 +127,7 @@ Write-Host "+==================================================================+
 Write-Host ""
 #endregion
 
-$totalSteps = 12
+$totalSteps = 10
 
 #region 1. Prerequisites Check
 Write-SectionHeader -Title "Checking Prerequisites..." -Number 1 -Total $totalSteps
@@ -747,121 +745,8 @@ else {
 }
 #endregion
 
-#region 10. SMB Encryption Configuration (For MDI Network Parsing)
-Write-SectionHeader -Title "Configuring SMB Encryption Settings..." -Number 10 -Total $totalSteps
-
-Write-StatusMessage -Message "SMB3 encryption can prevent MDI from parsing network traffic" -Status INFO
-Write-StatusMessage -Message "Disabling SMB encryption for MDI compatibility (lab environments)" -Status INFO
-
-if ($ValidateOnly) {
-    try {
-        $smbConfig = Get-SmbServerConfiguration
-        if ($smbConfig.EncryptData -eq $false) {
-            Write-StatusMessage -Message "SMB Server EncryptData: Disabled (MDI compatible)" -Status OK
-        }
-        else {
-            Write-StatusMessage -Message "SMB Server EncryptData: Enabled (may block MDI parsing)" -Status WARN
-        }
-        
-        if ($smbConfig.RejectUnencryptedAccess -eq $false) {
-            Write-StatusMessage -Message "SMB Server RejectUnencryptedAccess: Disabled (MDI compatible)" -Status OK
-        }
-        else {
-            Write-StatusMessage -Message "SMB Server RejectUnencryptedAccess: Enabled (may block MDI parsing)" -Status WARN
-        }
-    }
-    catch {
-        Write-StatusMessage -Message "Could not check SMB configuration: $_" -Status WARN
-    }
-}
-else {
-    try {
-        # Disable SMB Server encryption
-        Set-SmbServerConfiguration -EncryptData $false -RejectUnencryptedAccess $false -Force
-        Write-StatusMessage -Message "SMB Server encryption disabled" -Status OK
-        
-        
-        Write-Host ""
-        Write-Host "    SMB Encryption Notes:" -ForegroundColor White
-        Write-Host "    [+] SMB encryption disabled for MDI network traffic parsing" -ForegroundColor Gray
-        Write-Host "    [+] MDI can now parse DRSUAPI/RPC traffic for DCSync detection" -ForegroundColor Gray
-        Write-Host "    [!] For production, consider re-enabling after MDI learning period" -ForegroundColor Yellow
-        Write-Host ""
-    }
-    catch {
-        Write-StatusMessage -Message "Failed to configure SMB encryption: $_" -Status ERROR
-    }
-}
-#endregion
-
-#region 11. Replication Rights Auditing (DCSync Detection)
-Write-SectionHeader -Title "Configuring Replication Rights Auditing (DCSync)..." -Number 11 -Total $totalSteps
-
-Write-StatusMessage -Message "Configuring SACL for DS-Replication rights (DCSync detection)" -Status INFO
-
-if ($ValidateOnly) {
-    try {
-        $acl = Get-Acl "AD:\$domainDN" -Audit
-        $replicationAudits = $acl.Audit | Where-Object { 
-            $_.ObjectType -match "1131f6aa-9c07-11d1-f79f-00c04fc2dcd2|1131f6ad-9c07-11d1-f79f-00c04fc2dcd2|89e95b76-444d-4c62-991a-0facbeda640c"
-        }
-        if ($replicationAudits) {
-            Write-StatusMessage -Message "Replication rights auditing is configured" -Status OK
-        }
-        else {
-            Write-StatusMessage -Message "Replication rights auditing is NOT configured" -Status WARN
-        }
-    }
-    catch {
-        Write-StatusMessage -Message "Could not check replication auditing: $_" -Status WARN
-    }
-}
-else {
-    try {
-        $acl = Get-Acl "AD:\$domainDN" -Audit
-        $everyoneSID = New-Object System.Security.Principal.SecurityIdentifier("S-1-1-0")
-        
-        # Replication GUIDs for DCSync detection
-        $replicationGuids = @(
-            @{GUID = "1131f6aa-9c07-11d1-f79f-00c04fc2dcd2"; Name = "DS-Replication-Get-Changes"},
-            @{GUID = "1131f6ad-9c07-11d1-f79f-00c04fc2dcd2"; Name = "DS-Replication-Get-Changes-All"},
-            @{GUID = "89e95b76-444d-4c62-991a-0facbeda640c"; Name = "DS-Replication-Get-Changes-In-Filtered-Set"}
-        )
-        
-        foreach ($repGuid in $replicationGuids) {
-            try {
-                $auditRule = New-Object System.DirectoryServices.ActiveDirectoryAuditRule(
-                    $everyoneSID,
-                    [System.DirectoryServices.ActiveDirectoryRights]::ExtendedRight,
-                    [System.Security.AccessControl.AuditFlags]::Success,
-                    [guid]$repGuid.GUID,
-                    [System.DirectoryServices.ActiveDirectorySecurityInheritance]::None
-                )
-                $acl.AddAuditRule($auditRule)
-                Write-StatusMessage -Message "$($repGuid.Name) auditing added" -Status OK
-            }
-            catch {
-                Write-StatusMessage -Message "Could not add audit rule for $($repGuid.Name): $_" -Status WARN
-            }
-        }
-        
-        Set-Acl "AD:\$domainDN" $acl
-        Write-StatusMessage -Message "Replication rights auditing SACL applied" -Status OK
-        
-        Write-Host ""
-        Write-Host "    DCSync Detection Notes:" -ForegroundColor White
-        Write-Host "    [+] Event ID 4662 will be logged for replication requests" -ForegroundColor Gray
-        Write-Host "    [+] MDI monitors these events for DCSync attack detection" -ForegroundColor Gray
-        Write-Host ""
-    }
-    catch {
-        Write-StatusMessage -Message "Failed to configure replication auditing: $_" -Status ERROR
-    }
-}
-#endregion
-
-#region 12. Power Settings and Final Configuration
-Write-SectionHeader -Title "Configuring Power Settings and Final Steps..." -Number 12 -Total $totalSteps
+#region 10. Power Settings and Final Configuration
+Write-SectionHeader -Title "Configuring Power Settings and Final Steps..." -Number 10 -Total $totalSteps
 
 if ($ValidateOnly) {
     # Check current power plan
@@ -982,10 +867,8 @@ else {
     Write-Host "  [+] Deleted Objects Permissions: Configured"
     Write-Host "  [+] Firewall Rules: Configured (NNR + SAM-R ports)"
     Write-Host "  [+] Object Auditing (SACL): Configured"
-    Write-Host "  [+] Advanced Audit Policies: Configured (incl. Directory Service Replication)"
+    Write-Host "  [+] Advanced Audit Policies: Configured"
     Write-Host "  [+] NTLM Auditing: Configured"
-    Write-Host "  [+] SMB Encryption: Disabled (for MDI network parsing)"
-    Write-Host "  [+] Replication Rights Auditing: Configured (DCSync detection)"
     Write-Host "  [+] Power Settings: High Performance"
     Write-Host "  [+] SAM-R: Configured"
     Write-Host ""
