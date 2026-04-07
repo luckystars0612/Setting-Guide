@@ -1,0 +1,45 @@
+# Antigravity Workspace & Environment Rules
+
+## 1. Session Handover & Context Persistence
+
+To ensure seamless continuity between Laptop and Workstation (Dual Xeon), the Agent must maintain a persistent "memory" of the project.
+
+### 📍 Mandatory Tracking File
+
+- Maintain a file named `SESSION_CONTEXT.md` at the root of the repository.
+- **Update Triggers**: Update this file before finishing a sub-task, after significant architectural changes, or when requested to "Sync context".
+
+### 📝 Required Content Structure
+
+The `SESSION_CONTEXT.md` must follow this template:
+
+- **Current Status**: Last active branch, current focus, and modified files.
+- **Architectural Context**: Brief explanation of current logic and state of code.
+- **Environment & Configs**: Critical .env variables and active services (Docker, Local LLMs, etc.).
+- **Next Steps**: A clear Todo list for the next session.
+- **Pending Issues**: Unsolved bugs or logic puzzles.
+
+### 🔄 Codebase Indexing (Repomix)
+
+- Before ending a session, always run `npx repomix` to refresh `repomix-output.xml`.
+- This ensures the Agent on the next machine has an updated map of the code without re-reading every file.
+
+---
+
+## 2. Python Environment & Dependency Management (uv)
+
+The project strictly uses **uv** as the Python package manager.
+
+- **Execution**: Always use `uv run <command>` or `uv pip install <package>`.
+- **Consistency**: When installing new dependencies, you MUST immediately update both `pyproject.toml` and `requirements.txt`.
+- **Virtual Env**: Ensure the `.venv` created by `uv` is respected. Do not use `pip` or `conda` unless explicitly told.
+
+---
+
+## 3. New Session Initialization Protocol
+
+At the start of every session (on both PC and Laptop), the Agent MUST:
+
+1. Automatically read `gemini.md`, `SESSION_CONTEXT.md`, and `repomix-output.xml`.
+2. Summarize the state to the user: _"I have recovered the context. We are at [Status]. I will proceed with [Next Step] using the uv environment."_
+3. Verify if the local environment (uv, .env, services) matches the session state.
