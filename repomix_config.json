@@ -1,0 +1,39 @@
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "input": {
+    "maxFileSize": 10485760 
+  },
+  "output": {
+    "filePath": "repomix-output.xml",
+    "style": "xml",
+    "parsableStyle": true,
+    "fileSummary": true,
+    "directoryStructure": true,
+    "files": true,
+    "removeComments": true,
+    "removeEmptyLines": true,
+    "topFilesLength": 20,
+    "showLineNumbers": true,
+    "copyToClipboard": false,
+    "git": {
+      "sortByChanges": true,
+      "sortByChangesMaxCommits": 100
+    }
+  },
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "repomix-output.xml",
+      "SESSION_CONTEXT.md",
+      "node_modules/**",
+      ".git/**",
+      "dist/**",
+      "build/**",
+      "*.log"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  }
+}
